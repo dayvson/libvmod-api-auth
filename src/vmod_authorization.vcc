@@ -1,0 +1,3 @@
+Module authorization
+Init init_function
+Function STRING get_authorization(STRING)
