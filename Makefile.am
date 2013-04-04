@@ -2,12 +2,12 @@ ACLOCAL_AMFLAGS = -I m4
 
 SUBDIRS = src
 
-EXTRA_DIST = README.rst
+EXTRA_DIST = README.md
 
 dist_man_MANS = vmod_authorization.3
 MAINTAINERCLEANFILES = $(dist_man_MANS)
 
-vmod_authorization.3: README.rst
+vmod_authorization.3: README.md
 
 %.1 %.2 %.3 %.4 %.5 %.6 %.7 %.8 %.9:
 if HAVE_RST2MAN
