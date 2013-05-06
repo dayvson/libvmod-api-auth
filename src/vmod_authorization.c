@@ -1,13 +1,21 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdarg.h>
 #include <stddef.h>
 #define MONGO_HAVE_STDINT
 #include "mongo.h"
 #include "vrt.h"
 #include "bin/varnishd/cache.h"
-
 #include "vcc_if.h"
+/*
+ * mhash.h has a habit of pulling in assert(). Let's hope it's a define,
+ * and that we can undef it, since Varnish has a better one.
+ */
+#include <mhash.h>
+#ifdef assert
+#   undef assert
+#endif
 
 typedef struct mongoConfig {
     char *host;
@@ -88,6 +96,26 @@ get_user_by_token( config_t *cfg, const char* token ) {
     bson_destroy( query );
     mongo_cursor_destroy( cursor );
     return NULL;
+}
+
+const char *
+vmod_encode_sha1(struct sess *sp, const char *msg)
+{
+    MHASH td;
+    unsigned char h[mhash_get_block_size(MHASH_SHA1)];
+    int i;
+    char *p;
+    char *ptmp;
+    td = mhash_init(MHASH_SHA1);
+    mhash(td, msg, strlen(msg));
+    mhash_deinit(td, h);
+    p = WS_Alloc(sp->ws,mhash_get_block_size(MHASH_SHA1)*2 + 1);
+    ptmp = p;
+    for (i = 0; i<mhash_get_block_size(MHASH_SHA1);i++) {
+        sprintf(ptmp,"%.2x",h[i]);
+        ptmp+=2;
+    }
+    return p;
 }
 
 int
