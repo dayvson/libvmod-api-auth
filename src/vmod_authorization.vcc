@@ -5,4 +5,5 @@ Function STRING get_credentials(PRIV_VCL, STRING)
 Function STRING encode_sha1(STRING)
 Function STRING encode_hmac(STRING, STRING)
 Function STRING encode_base64(STRING)
+Function INT is_valid(PRIV_VCL, STRING, STRING)
 

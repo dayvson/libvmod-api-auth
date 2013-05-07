@@ -36,8 +36,6 @@ typedef struct authHeader {
 
 enum alphabets {
     BASE64 = 0,
-    BASE64URL = 1,
-    BASE64URLNOPAD = 2,
     N_ALPHA
 };
 
@@ -46,7 +44,6 @@ static struct e_alphabet {
     char i64[256];
     char padding;
 } alphabet[N_ALPHA];
-
 
 
 #define LOG_E(...) fprintf(stderr, __VA_ARGS__);
@@ -100,10 +97,8 @@ get_user_by_token( config_t *cfg, const char* token ) {
     bson_init( query );
     bson_append_string( query, "token", token);
     bson_finish( query );
-
     mongo_cursor_init( cursor, cfg->conn, cfg->collection );
     mongo_cursor_set_query( cursor, query );
-
     while( mongo_cursor_next( cursor ) == MONGO_OK ) {
         bson_iterator iterator[1];
         if ( bson_find( iterator, mongo_cursor_bson( cursor ), "user" )) {
@@ -213,7 +208,7 @@ vmod_encode_base64(struct sess *sp, const char *msg)
     
     u = WS_Reserve(sp->ws,0);
     p = sp->ws->f;
-    u = base64_encode(&alphabet[BASE64],msg,strlen(msg),p,u);
+    u = base64_encode(&alphabet[BASE64], msg, strlen(msg), p, u);
     if (u < 0) {
         WS_Release(sp->ws,0);
         return NULL;
@@ -275,8 +270,9 @@ vmod_encode_hmac(struct sess *sp, const char *key, const char *msg)
      * HEX-encode
      */
     hexenc = WS_Alloc(sp->ws, 2*blocksize+3); // 0x, '\0' + 2 per input
-    if (hexenc == NULL)
+    if (hexenc == NULL){
         return NULL;
+    }
     hexptr = hexenc;
     for (j = 0; j < blocksize; j++) {
         sprintf(hexptr,"%.2x", mac[j]);
@@ -362,4 +358,22 @@ vmod_get_credentials(struct sess *sp, struct vmod_priv *priv, const char *token)
 	/* Update work space with what we've used */
 	WS_Release(sp->wrk->ws, v);
 	return (p);
+}
+
+
+int
+vmod_is_valid(struct sess *sp, struct vmod_priv *priv, const char *authorization_header, const char *custom_header)
+{
+    config_t *cfg = priv->priv;
+    auth_header * _header;
+    _header = parse_header(authorization_header);
+    char *user_data = get_user_by_token( cfg, _header->token);
+    char *sign_hmac = vmod_encode_hmac( sp, "bnl0di1jaGVycnktYXBp", custom_header); //XXX: Hardcoded for know I should key the secretkey from mongo
+    char *sign_b64 =  vmod_encode_base64(sp, sign_hmac);
+
+    if(strncmp(_header->signature, sign_b64, 100) == 0){
+        return (1);
+    }else{
+        return (0);
+    }
 }
