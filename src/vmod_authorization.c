@@ -101,7 +101,7 @@ get_user_by_token( config_t *cfg, const char* token ) {
     mongo_cursor_set_query( cursor, query );
     while( mongo_cursor_next( cursor ) == MONGO_OK ) {
         bson_iterator iterator[1];
-        if ( bson_find( iterator, mongo_cursor_bson( cursor ), "user" )) {
+        if ( bson_find( iterator, mongo_cursor_bson( cursor ), "secretkey" )) {
             return bson_iterator_string( iterator );
         }
     }
@@ -218,19 +218,19 @@ vmod_encode_base64(struct sess *sp, const char *msg)
 }
 
 const char *
-vmod_encode_sha1(struct sess *sp, const char *msg)
+vmod_encode_sha512(struct sess *sp, const char *msg)
 {
     MHASH td;
-    unsigned char h[mhash_get_block_size(MHASH_SHA1)];
+    unsigned char h[mhash_get_block_size(MHASH_SHA512)];
     int i;
     char *p;
     char *ptmp;
-    td = mhash_init(MHASH_SHA1);
+    td = mhash_init(MHASH_SHA512);
     mhash(td, msg, strlen(msg));
     mhash_deinit(td, h);
-    p = WS_Alloc(sp->ws,mhash_get_block_size(MHASH_SHA1)*2 + 1);
+    p = WS_Alloc(sp->ws,mhash_get_block_size(MHASH_SHA512)*2 + 1);
     ptmp = p;
-    for (i = 0; i<mhash_get_block_size(MHASH_SHA1);i++) {
+    for (i = 0; i<mhash_get_block_size(MHASH_SHA512); i++) {
         sprintf(ptmp,"%.2x",h[i]);
         ptmp+=2;
     }
@@ -240,8 +240,8 @@ vmod_encode_sha1(struct sess *sp, const char *msg)
 const char *
 vmod_encode_hmac(struct sess *sp, const char *key, const char *msg)
 {
-    size_t maclen = mhash_get_hash_pblock(MHASH_SHA1);
-    size_t blocksize = mhash_get_block_size(MHASH_SHA1);
+    size_t maclen = mhash_get_hash_pblock(MHASH_SHA512);
+    size_t blocksize = mhash_get_block_size(MHASH_SHA512);
     unsigned char mac[blocksize];
     unsigned char *hexenc;
     unsigned char *hexptr;
@@ -259,10 +259,10 @@ vmod_encode_hmac(struct sess *sp, const char *key, const char *msg)
      * is used in mhash_hmac_init. If the return value is 0 you
      *shouldn't use that algorithm in  HMAC.
      */
-    assert(mhash_get_hash_pblock(MHASH_SHA1) > 0);
+    assert(mhash_get_hash_pblock(MHASH_SHA512) > 0);
 
-    td = mhash_hmac_init(MHASH_SHA1, (void *) key, strlen(key),
-        mhash_get_hash_pblock(MHASH_SHA1));
+    td = mhash_hmac_init(MHASH_SHA512, (void *) key, strlen(key),
+        mhash_get_hash_pblock(MHASH_SHA512));
     mhash(td, msg, strlen(msg));
     mhash_hmac_deinit(td,mac);
     
@@ -368,7 +368,7 @@ vmod_is_valid(struct sess *sp, struct vmod_priv *priv, const char *authorization
     auth_header * _header;
     _header = parse_header(authorization_header);
     char *user_data = get_user_by_token( cfg, _header->token);
-    char *sign_hmac = vmod_encode_hmac( sp, "bnl0di1jaGVycnktYXBp", custom_header); //XXX: Hardcoded for know I should key the secretkey from mongo
+    char *sign_hmac = vmod_encode_hmac( sp, user_data, custom_header); //XXX: Hardcoded for know I should key the secretkey from mongo
     char *sign_b64 =  vmod_encode_base64(sp, sign_hmac);
 
     if(strncmp(_header->signature, sign_b64, 100) == 0){
