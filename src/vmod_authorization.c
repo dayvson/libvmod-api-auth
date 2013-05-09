@@ -112,17 +112,7 @@ get_user_by_token( config_t *cfg, const char* token ) {
 }
 
 /*
- * Base64-encode *in (size: inlen) into *out, max outlen bytes. If there is
- * insufficient space, it will bail out and return -1. Otherwise, it will
- * null-terminate and return the used space.
- * The alphabet `a` defines... the alphabet. Padding is optional.
- * Inspired heavily by gnulib/Simon Josefsson (as referenced in RFC4648)
- *
- * XXX: tmp[] and idx are used to ensure the reader (and author) retains
- * XXX: a limited amount of sanity. They are strictly speaking not
- * XXX: necessary, if you don't mind going crazy.
- *
- * FIXME: outlenorig is silly. Flip the logic.
+ * Base64-encode, inspired heavily by gnulib/Simon Josefsson (as referenced in RFC4648)
  */
 static size_t
 base64_encode (struct e_alphabet *alpha, const char *in,
@@ -254,10 +244,7 @@ vmod_encode_hmac(struct sess *sp, const char *key, const char *msg)
     CHECK_OBJ_NOTNULL(sp->ws, WS_MAGIC);
 
     /*
-     * size_t mhash_get_hash_pblock(hashid type);
-     *It returns the block size that the algorithm operates. This
-     * is used in mhash_hmac_init. If the return value is 0 you
-     *shouldn't use that algorithm in  HMAC.
+     *If the return value is 0 you shouldn't use that algorithm in  HMAC.
      */
     assert(mhash_get_hash_pblock(MHASH_SHA512) > 0);
 
@@ -266,9 +253,7 @@ vmod_encode_hmac(struct sess *sp, const char *key, const char *msg)
     mhash(td, msg, strlen(msg));
     mhash_hmac_deinit(td,mac);
     
-    /*
-     * HEX-encode
-     */
+
     hexenc = WS_Alloc(sp->ws, 2*blocksize+3); // 0x, '\0' + 2 per input
     if (hexenc == NULL){
         return NULL;
@@ -283,9 +268,7 @@ vmod_encode_hmac(struct sess *sp, const char *key, const char *msg)
     return hexenc;
 }
 
-/*
- * Initializes the reverse lookup-table for the relevant base-N alphabet.
- */
+
 static void
 digest_alphabet(struct e_alphabet *alpha)
 {
@@ -368,7 +351,7 @@ vmod_is_valid(struct sess *sp, struct vmod_priv *priv, const char *authorization
     auth_header * _header;
     _header = parse_header(authorization_header);
     char *user_data = get_user_by_token( cfg, _header->token);
-    char *sign_hmac = vmod_encode_hmac( sp, user_data, custom_header); //XXX: Hardcoded for know I should key the secretkey from mongo
+    char *sign_hmac = vmod_encode_hmac( sp, user_data, custom_header);
     char *sign_b64 =  vmod_encode_base64(sp, sign_hmac);
 
     if(strncmp(_header->signature, sign_b64, 100) == 0){
