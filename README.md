@@ -47,7 +47,7 @@ sub vcl_deliver {
 
 The value of the Authorization header is as follows:
 ```
-Authorization: NYTV <TOKEN>:<Signature(Base64(HMAC-SHA1(<String>, <SecretKey>)))>
+Authorization: NYTV <TOKEN>:<Signature(Base64(HMAC-SHA512(<String>, <SecretKey>)))>
 ```
 You also need to provide the raw string used on HMAC-SHA512 signature. This should be added to the header as the value for 'X-Custom-Date'.
 ```
