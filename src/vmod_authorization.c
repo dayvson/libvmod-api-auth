@@ -354,7 +354,7 @@ vmod_is_valid(struct sess *sp, struct vmod_priv *priv, const char *authorization
     char *sign_hmac = vmod_encode_hmac( sp, user_data, custom_header);
     char *sign_b64 =  vmod_encode_base64(sp, sign_hmac);
 
-    if(strncmp(_header->signature, sign_b64, 100) == 0){
+    if(strncmp(_header->signature, sign_b64, 172) == 0){
         return (1);
     }else{
         return (0);
