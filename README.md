@@ -95,8 +95,12 @@ curl -H "Authorization: NYTV 9c421d03fe8562827bcf573310051844a65da0fc:ZjQyNTRkZT
 ###Dependencies:
 <table>
   <tr>
-    <td><strong>MHASH</strong></td>
-    <td><strong>0-9-9-9</strong></td>
+    <td><strong>LIBRARY</strong></td>
+    <td><strong>VERSION</strong></td>
+  </tr>
+  <tr>
+    <td>MHASH</td>
+    <td>0-9-9-9</td>
   </tr>
   <tr>
     <td>LIBMONGO</td>
