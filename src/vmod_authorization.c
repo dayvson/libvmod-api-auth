@@ -207,25 +207,6 @@ vmod_encode_base64(struct sess *sp, const char *msg)
     return p;
 }
 
-const char *
-vmod_encode_sha512(struct sess *sp, const char *msg)
-{
-    MHASH td;
-    unsigned char h[mhash_get_block_size(MHASH_SHA512)];
-    int i;
-    char *p;
-    char *ptmp;
-    td = mhash_init(MHASH_SHA512);
-    mhash(td, msg, strlen(msg));
-    mhash_deinit(td, h);
-    p = WS_Alloc(sp->ws,mhash_get_block_size(MHASH_SHA512)*2 + 1);
-    ptmp = p;
-    for (i = 0; i<mhash_get_block_size(MHASH_SHA512); i++) {
-        sprintf(ptmp,"%.2x",h[i]);
-        ptmp+=2;
-    }
-    return p;
-}
 
 const char *
 vmod_encode_hmac(struct sess *sp, const char *key, const char *msg)
@@ -244,7 +225,7 @@ vmod_encode_hmac(struct sess *sp, const char *key, const char *msg)
     CHECK_OBJ_NOTNULL(sp->ws, WS_MAGIC);
 
     /*
-     *If the return value is 0 you shouldn't use that algorithm in  HMAC.
+     *If the return value is 0 you shouldn't use that algorithm in HMAC.
      */
     assert(mhash_get_hash_pblock(MHASH_SHA512) > 0);
 
@@ -350,9 +331,9 @@ vmod_is_valid(struct sess *sp, struct vmod_priv *priv, const char *authorization
     config_t *cfg = priv->priv;
     auth_header * _header;
     _header = parse_header(authorization_header);
-    char *user_data = get_user_by_token( cfg, _header->token);
-    char *sign_hmac = vmod_encode_hmac( sp, user_data, custom_header);
-    char *sign_b64 =  vmod_encode_base64(sp, sign_hmac);
+    char * user_data = get_user_by_token( cfg, _header->token);
+    char * sign_hmac = vmod_encode_hmac(sp, user_data, custom_header);
+    char * sign_b64  = vmod_encode_base64(sp, sign_hmac);
 
     if(strncmp(_header->signature, sign_b64, 172) == 0){
         return (1);

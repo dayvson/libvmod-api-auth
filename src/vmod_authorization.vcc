@@ -1,9 +1,5 @@
 Module authorization
 Init init_function
 Function VOID dbconnect(PRIV_VCL, STRING, INT, STRING)
-Function STRING get_credentials(PRIV_VCL, STRING)
-Function STRING encode_sha512(STRING)
-Function STRING encode_hmac(STRING, STRING)
-Function STRING encode_base64(STRING)
 Function INT is_valid(PRIV_VCL, STRING, STRING)
 
