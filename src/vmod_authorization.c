@@ -4,6 +4,7 @@
 #include <stdarg.h>
 #include <stddef.h>
 
+
 /*
  * mhash.h has a habit of pulling in assert(). Let's hope it's a define,
  * and that we can undef it, since Varnish has a better one.
@@ -325,7 +326,7 @@ vmod_get_credentials(struct sess *sp, struct vmod_priv *priv, const char *token)
 }
 
 
-int
+unsigned
 vmod_is_valid(struct sess *sp, struct vmod_priv *priv, const char *authorization_header, const char *custom_header)
 {
     config_t *cfg = priv->priv;
