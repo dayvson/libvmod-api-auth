@@ -6,7 +6,7 @@ sub vcl_init {
 
 sub vcl_recv {
     if (req.http.Authorization && req.http.X-Custom-Date) {
-        if(authorization.is_valid(req.http.Authorization, req.http.X-Custom-Date) == 1){
+        if(authorization.is_valid(req.http.Authorization, req.http.X-Custom-Date)){
             return (pass);
         }else{
             error 401 "Not Authorized";
