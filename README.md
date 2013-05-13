@@ -10,38 +10,97 @@ VCL example to show how to use authorization module::
 ```
 import authorization;
 
-backend default {
- .host = "127.0.0.1";
- .port = "3000";
-}
-
 sub vcl_init {
-    authorization.dbconnect("127.0.0.1", 27017, "test.cherry");
+  authorization.dbconnect("127.0.0.1", 27017, "test.cherry");
+  authorization.dbscheme("token", "secretkey");
 }
 
 sub vcl_recv {
-    if (req.http.Authorization && req.http.X-Custom-Date) {
-        if(authorization.is_valid(req.http.Authorization, req.http.X-Custom-Date) == 1){
-            unset req.http.Authorization;
-            return (lookup);
-        }else{
-            error 401 "Not Authorized";
-        }
-        
+  if (req.http.Authorization && req.http.X-Custom-Date) {
+    if(authorization.is_valid(req.http.Authorization, req.url, req.http.X-Custom-Date)){
+      return (pass);
+    }else{
+      error 401 "Not Authorized";
     }
-    
-}
-
-sub vcl_deliver {
-    set resp.http.X-Hits = obj.hits;
-    if (obj.hits > 0) {
-        set resp.http.X-Cache = "HIT";
-    } else {
-        set resp.http.X-Cache = "MISS";
-    }
+  }
 }
 
 ```
+
+###FUNCTIONS:
+<table>
+  <tr>
+    <td><strong>FUNCTION</strong></td>
+    <td><strong>RETURN</strong></td>
+  </tr>
+  <tr>
+    <td>dbconnect</td>
+    <td>VOID</td>
+  </tr>
+  <tr>
+    <td>dbscheme</td>
+    <td>VOID</td>
+  </tr>
+  <tr>
+    <td>is_valid</td>
+    <td>BOOL</td>
+  </tr>
+</table>
+
+All the functions listed here can be used VCL files
+
+####dbconnect
+It is responsible to connect VARNISH to your Mongodb instance this function returns is VOID
+
+dbconnect(STRING host, INT port, STRING database.collection)
+
+#####Arguments:
+  host                -> Your mongodb host name
+  port                -> mongodb port
+  database.collection -> A string contain database name and collection
+
+#####Example:
+sub vcl_init {
+    authorization.dbconnect("127.0.0.1", 27017, "test.cherry");
+} 
+
+
+####dbscheme
+It is responsible to provide your scheme collection VARNISH know where he can find the values to authorization this function returns is VOID 
+
+dbscheme(STRING public_key, STRING private_key)
+
+#####Arguments:
+  public_key  -> A string property to access the public_key in your collection
+  private_key -> A string property to access the private_key in your collection
+
+#####Example:
+sub vcl_init {
+    authorization.dbscheme("token", "secretkey");
+}
+
+####is_valid
+This function is responsible to provide your scheme collection VARNISH know where he can find the values to authorization this function returns a BOOLEAN 
+
+is_valid(STRING authorization_header, STRING url, STRING custom_header)
+
+#####Arguments:
+  authorization -> The authorization header 
+  url           -> The url requested
+  custom_header -> A custom header to used to generate the signature
+
+#####Example:
+<pre>
+sub vcl_recv {
+  if (req.http.Authorization && req.http.X-Custom-Date) {
+    if(authorization.is_valid(req.http.Authorization, req.url, req.http.X-Custom-Date)){
+      return (pass);
+    }else{
+      error 401 "Not Authorized";
+    }
+  }
+}
+</pre>
 
 ##Authenticating REST Requests
 
@@ -100,7 +159,7 @@ curl -H "Authorization: NYTV 9c421d03fe8562827bcf573310051844a65da0fc:ZjQyNTRkZT
   </tr>
   <tr>
     <td>MHASH</td>
-    <td>0-9-9-9</td>
+    <td>0.9.9.9</td>
   </tr>
   <tr>
     <td>LIBMONGO</td>
