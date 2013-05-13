@@ -31,18 +31,22 @@ sub vcl_recv {
 <table>
   <tr>
     <td><strong>FUNCTION</strong></td>
+    <td><strong>ARGUMENTS</strong></td>
     <td><strong>RETURN</strong></td>
   </tr>
   <tr>
     <td>dbconnect</td>
+    <td>STRING host, INT port, STRING database.collection</td>
     <td>VOID</td>
   </tr>
   <tr>
     <td>dbscheme</td>
+    <td>STRING public_key, STRING private_key</td>
     <td>VOID</td>
   </tr>
   <tr>
     <td>is_valid</td>
+    <td>STRING authorization_header, STRING url, STRING custom_header</td>
     <td>BOOL</td>
   </tr>
 </table>
@@ -125,7 +129,6 @@ X-Custom-Date: String
 
 
 Suppose your TOKEN ID is "9c421d03fe8562827bcf573310051844a65da0fc" and your Secret Key is "bnl0di1jaGVycnktYXBp". 
-Then you could compute the signature as follows:
 Node.JS example:
 ```
 var crypto = require('crypto');
