@@ -60,10 +60,11 @@ dbconnect(STRING host, INT port, STRING database.collection)
   database.collection -> A string contain database name and collection
 
 #####Example:
+```
 sub vcl_init {
     authorization.dbconnect("127.0.0.1", 27017, "test.cherry");
 } 
-
+```
 
 ####dbscheme
 It is responsible to provide your scheme collection VARNISH know where he can find the values to authorization this function returns is VOID 
@@ -71,13 +72,15 @@ It is responsible to provide your scheme collection VARNISH know where he can fi
 dbscheme(STRING public_key, STRING private_key)
 
 #####Arguments:
-  public_key  -> A string property to access the public_key in your collection
-  private_key -> A string property to access the private_key in your collection
+  * public_key  -> A string property to access the public_key in your collection
+  * private_key -> A string property to access the private_key in your collection
 
 #####Example:
+```
 sub vcl_init {
     authorization.dbscheme("token", "secretkey");
 }
+```
 
 ####is_valid
 This function is responsible to provide your scheme collection VARNISH know where he can find the values to authorization this function returns a BOOLEAN 
@@ -85,12 +88,12 @@ This function is responsible to provide your scheme collection VARNISH know wher
 is_valid(STRING authorization_header, STRING url, STRING custom_header)
 
 #####Arguments:
-  authorization -> The authorization header 
-  url           -> The url requested
-  custom_header -> A custom header to used to generate the signature
+  * authorization -> The authorization header 
+  * url           -> The url requested
+  * custom_header -> A custom header to used to generate the signature
 
 #####Example:
-<pre>
+```
 sub vcl_recv {
   if (req.http.Authorization && req.http.X-Custom-Date) {
     if(authorization.is_valid(req.http.Authorization, req.url, req.http.X-Custom-Date)){
@@ -100,7 +103,7 @@ sub vcl_recv {
     }
   }
 }
-</pre>
+```
 
 ##Authenticating REST Requests
 
