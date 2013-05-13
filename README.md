@@ -109,7 +109,7 @@ sub vcl_recv {
 }
 ```
 
-##Authenticating REST Requests
+##Authorization Requests
 
 The value of the Authorization header is as follows:
 ```
