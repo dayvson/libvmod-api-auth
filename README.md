@@ -87,7 +87,7 @@ sub vcl_init {
 ```
 
 ####is_valid
-This function is responsible to provide your scheme collection VARNISH know where he can find the values to authorization this function returns a BOOLEAN 
+This function will try authenticate your request this function returns a BOOLEAN 
 
 is_valid(STRING authorization_header, STRING url, STRING custom_header)
 
