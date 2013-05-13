@@ -3,8 +3,6 @@
 #include <string.h>
 #include <stdarg.h>
 #include <stddef.h>
-
-
 /*
  * mhash.h has a habit of pulling in assert(). Let's hope it's a define,
  * and that we can undef it, since Varnish has a better one.
@@ -26,6 +24,8 @@ typedef struct mongoConfig {
     int port;
     char *collection;
     mongo conn[1];
+    char *private_key;
+    char *public_key;
 } config_t;
 
 typedef struct authHeader {
@@ -47,12 +47,13 @@ static struct e_alphabet {
 } alphabet[N_ALPHA];
 
 
-#define LOG_E(...) fprintf(stderr, __VA_ARGS__);
-#ifdef DEBUG
-#   define  LOG_T(...) fprintf(stderr, __VA_ARGS__);
-#else
-#   define  LOG_T(...) do {} while(0);
-#endif
+#define LOG_ERR(sess, ...)                                                      \
+    if ((sess) != NULL) {                                                       \
+        WSP((sess), SLT_VCL_error, __VA_ARGS__);                                \
+    } else {                                                                    \
+        fprintf(stderr, __VA_ARGS__);                                           \
+        fputs("\n", stderr);                                                    \
+    }
 
 static auth_header *
 parse_header(const char* authorization_str){
@@ -75,9 +76,6 @@ static config_t *
 make_config(const char *host, int port, const char* collection)
 {
     config_t *cfg;
-
-    LOG_T("make_config(%s,%d,%s)\n", host, port, collection);
-
     cfg = malloc(sizeof(config_t));
 
     if(cfg == NULL){
@@ -96,13 +94,13 @@ get_user_by_token( config_t *cfg, const char* token ) {
     bson query[1];
     mongo_cursor cursor[1];
     bson_init( query );
-    bson_append_string( query, "token", token);
+    bson_append_string( query, cfg->public_key, token);
     bson_finish( query );
     mongo_cursor_init( cursor, cfg->conn, cfg->collection );
     mongo_cursor_set_query( cursor, query );
     while( mongo_cursor_next( cursor ) == MONGO_OK ) {
         bson_iterator iterator[1];
-        if ( bson_find( iterator, mongo_cursor_bson( cursor ), "secretkey" )) {
+        if ( bson_find( iterator, mongo_cursor_bson( cursor ), cfg->private_key )) {
             return bson_iterator_string( iterator );
         }
     }
@@ -302,41 +300,42 @@ vmod_dbconnect(struct sess *sp, struct vmod_priv *priv, const char* host, int po
 
 }
 
-const char *
-vmod_get_credentials(struct sess *sp, struct vmod_priv *priv, const char *token)
-{
-	char *p;
-	unsigned u, v;
+void 
+vmod_dbscheme(struct sess *sp, struct vmod_priv *priv, const char* public_key, const char* private_key){
     config_t *cfg = priv->priv;
-    auth_header * _header = parse_header(token);
-
-	u = WS_Reserve(sp->wrk->ws, 0); /* Reserve some work space */
-	p = sp->wrk->ws->f;		/* Front of workspace area */
-	v = snprintf(p, u, get_user_by_token( cfg, _header->token ), _header->token);
-
-	v++;
-	if (v > u) {
-		/* No space, reset and leave */
-		WS_Release(sp->wrk->ws, 0);
-		return (NULL);
-	}
-	/* Update work space with what we've used */
-	WS_Release(sp->wrk->ws, v);
-	return (p);
+    if(cfg){
+        cfg->public_key = public_key;
+        cfg->private_key = private_key;
+        priv->priv = cfg;
+    }
 }
 
-
 unsigned
-vmod_is_valid(struct sess *sp, struct vmod_priv *priv, const char *authorization_header, const char *custom_header)
+vmod_is_valid(struct sess *sp, struct vmod_priv *priv, const char *authorization_header, const char *url, const char *custom_header)
 {
     config_t *cfg = priv->priv;
     auth_header * _header;
     _header = parse_header(authorization_header);
+    char *p;
+    unsigned u, v;
+
+    u = WS_Reserve(sp->wrk->ws, 0); /* Reserve some work space */
+    p = sp->wrk->ws->f;     /* Front of workspace area */
+    v = snprintf(p, u, "%s-%s", url, custom_header);
+
+    v++;
+    if (v > u) {
+        /* No space, reset and leave */
+        WS_Release(sp->wrk->ws, 0);
+        return (NULL);
+    }
+    /* Update work space with what we've used */
+    WS_Release(sp->wrk->ws, v);
     char * user_data = get_user_by_token( cfg, _header->token);
-    char * sign_hmac = vmod_encode_hmac(sp, user_data, custom_header);
+    char * sign_hmac = vmod_encode_hmac(sp, user_data, p);
     char * sign_b64  = vmod_encode_base64(sp, sign_hmac);
 
-    if(strncmp(_header->signature, sign_b64, 172) == 0){
+    if(VRT_strcmp(_header->signature, sign_b64) == 0){
         return (1);
     }else{
         return (0);
