@@ -2,11 +2,12 @@ import authorization;
 
 sub vcl_init {
     authorization.dbconnect("127.0.0.1", 27017, "database.collection");
+    authorization.dbscheme("token", "secretkey");
 }
 
 sub vcl_recv {
     if (req.http.Authorization && req.http.X-Custom-Date) {
-        if(authorization.is_valid(req.http.Authorization, req.http.X-Custom-Date)){
+        if(authorization.is_valid(req.http.Authorization, req.url, req.http.X-NYTV-Date)){
             return (pass);
         }else{
             error 401 "Not Authorized";
