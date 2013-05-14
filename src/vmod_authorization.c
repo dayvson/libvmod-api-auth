@@ -57,12 +57,17 @@ static struct e_alphabet {
 
 static auth_header *
 parse_header(const char* authorization_str){
+    /* XXX: Check if authorization_str is NULL */
     const char* delimiters = " :";
     const char* default_scheme = "NYTV";
     char *tmp_copy;
     auth_header * _header;
+
+    /* TODO: Protect the malloc call with the varnish locking system */
     _header = malloc(sizeof(auth_header));
     tmp_copy = strdup(authorization_str);
+
+    /* XXX: strtok() is not reentrant :( */
     _header->scheme = strtok(tmp_copy, delimiters);
     if(strncmp(_header->scheme, default_scheme, 100) != 0){
         return NULL; 
@@ -76,6 +81,8 @@ static config_t *
 make_config(const char *host, int port, const char* collection)
 {
     config_t *cfg;
+
+    /* XXX: Check if host and collection are NULL */
     cfg = malloc(sizeof(config_t));
 
     if(cfg == NULL){
@@ -93,14 +100,20 @@ static char *
 get_user_by_token( config_t *cfg, const char* token ) {
     bson query[1];
     mongo_cursor cursor[1];
+
+    /* XXX: Check if token is NULL */
+
     bson_init( query );
     bson_append_string( query, cfg->public_key, token);
     bson_finish( query );
     mongo_cursor_init( cursor, cfg->conn, cfg->collection );
     mongo_cursor_set_query( cursor, query );
+
+    /* XXX: Check if we have a find_one() in the mongo API to avoid the loop */
     while( mongo_cursor_next( cursor ) == MONGO_OK ) {
         bson_iterator iterator[1];
         if ( bson_find( iterator, mongo_cursor_bson( cursor ), cfg->private_key )) {
+            /* XXX: Free query and cursor if you're leaving the scope here */
             return bson_iterator_string( iterator );
         }
     }
@@ -190,15 +203,18 @@ vmod_encode_base64(struct sess *sp, const char *msg)
 {
     char *p;
     int u;
+
+    /* XXX: Rewrite those checks without using asserts */
     assert(msg);
     assert(BASE64<N_ALPHA);
     CHECK_OBJ_NOTNULL(sp, SESS_MAGIC);
     CHECK_OBJ_NOTNULL(sp->ws, WS_MAGIC);
-    
+
+    /* XXX: Improve the variable names :) */
     u = WS_Reserve(sp->ws,0);
     p = sp->ws->f;
     u = base64_encode(&alphabet[BASE64], msg, strlen(msg), p, u);
-    if (u < 0) {
+    if (u > p) {
         WS_Release(sp->ws,0);
         return NULL;
     }
@@ -341,3 +357,19 @@ vmod_is_valid(struct sess *sp, struct vmod_priv *priv, const char *authorization
         return (0);
     }
 }
+
+#if 0
+unsigned
+vmod_set_backend(struct sess *sp,
+                 struct vmod_priv *priv,
+                 const char *kind)
+{
+  unsigned request_allocate, allocated;
+
+  if (priv->backend != NULL) {
+    backend_free (priv->backend);
+  }
+
+  /* do something cool here */
+}
+#endif
