@@ -79,6 +79,8 @@ vmod_is_valid(struct sess *sp, struct vmod_priv *priv, const char *authorization
     /* Update work space with what we've used */
     WS_Release(sp->wrk->ws, allocated);
     char *user_data = database_get_credentials(database, _header->token);
+    if (user_data == NULL)
+        return 0;
     char *sign_hmac = encode_hmac(sp, user_data, string_to_sign);
     char *signed_b64  = encode_base64(sp, sign_hmac);
 
