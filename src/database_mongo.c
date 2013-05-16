@@ -2,23 +2,17 @@
 #include "database_mongo.h"
 #include "mongo.h"
 
-enum status_types {
-  STATUS_NOMEM = -1,
-  STATUS_OK = 0,
-  STATUS_FAIL = 1
-};
-
 typedef struct mongoConfig {
     mongo conn[1];
 } mongo_t;
 
 static int
-_connect (database_t *database)
+_connect ( database_t *database )
 {
     int status;
     mongo_t *mongo_config = malloc( sizeof( mongo_t ) );
-    /* TODO: Parse the uri (inside of kind) */
-    if(mongo_client ( mongo_config->conn, database_get_host ( database ), database_get_port ( database )) == MONGO_OK ){
+
+    if(mongo_client ( mongo_config->conn, database_get_host ( database ), database_get_port ( database ) ) == MONGO_OK ){
         database_set_data ( database, mongo_config );
         return STATUS_OK;
     }
@@ -36,14 +30,15 @@ _disconnect ( database_t *database )
 static int
 _connected ( database_t *database ) {
     mongo_t *mongo_config = database_get_data ( database );
-    if(mongo_check_connection ( mongo_config->conn ) == MONGO_OK){
+    if( mongo_check_connection ( mongo_config->conn ) == MONGO_OK ){
         return STATUS_OK;
     }
     return STATUS_FAIL;
 }
 
 static const char * 
-_credentials( database_t *database, const char* token ) 
+_credentials( database_t *database,
+             const char* token ) 
 {
     bson query[1];
     mongo_cursor cursor[1];
@@ -51,7 +46,7 @@ _credentials( database_t *database, const char* token )
     if(token == NULL) {
         return NULL;
     }
-    mongo_t *mongo_config = (mongo_t *) database_get_data( database );
+    mongo_t *mongo_config = ( mongo_t * ) database_get_data( database );
     
     bson_init( query );
     bson_append_string( query, database_get_public_key( database ), token);
@@ -75,10 +70,10 @@ _credentials( database_t *database, const char* token )
 
 
 void
-database_init_mongo (database_t *database)
+database_init_mongo ( database_t *database )
 {
-    database_callback_set_connect (database, _connect);
-    database_callback_set_disconnect (database, _disconnect);
-    database_callback_set_connected (database, _connected);
-    database_callback_set_user_credentials(database, _credentials);
+    database_callback_set_connect ( database, _connect );
+    database_callback_set_disconnect ( database, _disconnect );
+    database_callback_set_connected ( database, _connected );
+    database_callback_set_user_credentials( database, _credentials );
 }
