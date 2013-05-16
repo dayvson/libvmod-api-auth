@@ -11,8 +11,9 @@ VCL example to show how to use authorization module::
 import authorization;
 
 sub vcl_init {
-  authorization.dbconnect("127.0.0.1", 27017, "test.cherry");
-  authorization.dbscheme("token", "secretkey");
+  authorization.database("mongodb");
+  authorization.database_connect("127.0.0.1", 27017, "test.cherry");
+  authorization.database_scheme("token", "secretkey");
 }
 
 sub vcl_recv {
@@ -35,12 +36,17 @@ sub vcl_recv {
     <td><strong>RETURN</strong></td>
   </tr>
   <tr>
-    <td>dbconnect</td>
+    <td>database</td>
+    <td>STRING database_name (mongodb or redis)</td>
+    <td>VOID</td>
+  </tr>
+  <tr>
+    <td>database_connect</td>
     <td>STRING host, INT port, STRING database.collection</td>
     <td>VOID</td>
   </tr>
   <tr>
-    <td>dbscheme</td>
+    <td>database_scheme</td>
     <td>STRING public_key, STRING private_key</td>
     <td>VOID</td>
   </tr>
@@ -53,10 +59,19 @@ sub vcl_recv {
 
 All the functions listed here can be used VCL files
 
-####dbconnect
-It is responsible to connect VARNISH to your Mongodb instance this function returns is VOID
+####database
+It is responsible to connect define which database VARNISH will use you can choose between Mongodb or Redis.
 
-dbconnect(STRING host, INT port, STRING database.collection)
+database(STRING database_name)
+
+#####Arguments:
+  database_name        -> Your database name (mongodb or redis)
+  
+
+####database_connect
+It is responsible to connect VARNISH to your Mongodb/Redis instance this function returns is VOID
+
+database_connect(STRING host, INT port, STRING database.collection)
 
 #####Arguments:
   host                -> Your mongodb host name
@@ -66,14 +81,14 @@ dbconnect(STRING host, INT port, STRING database.collection)
 #####Example:
 ```
 sub vcl_init {
-    authorization.dbconnect("127.0.0.1", 27017, "test.cherry");
+    authorization.database_connect("127.0.0.1", 27017, "test.cherry");
 } 
 ```
 
-####dbscheme
+####database_scheme
 It is responsible to provide your scheme collection VARNISH know where he can find the values to authorization this function returns is VOID 
 
-dbscheme(STRING public_key, STRING private_key)
+database_scheme(STRING public_key, STRING private_key)
 
 #####Arguments:
   * public_key  -> A string property to access the public_key in your collection
@@ -82,7 +97,7 @@ dbscheme(STRING public_key, STRING private_key)
 #####Example:
 ```
 sub vcl_init {
-    authorization.dbscheme("token", "secretkey");
+    authorization.database_scheme("token", "secretkey");
 }
 ```
 
