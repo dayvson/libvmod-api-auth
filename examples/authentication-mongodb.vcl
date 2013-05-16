@@ -1,8 +1,9 @@
 import authorization;
 
 sub vcl_init {
-    authorization.dbconnect("127.0.0.1", 27017, "database.collection");
-    authorization.dbscheme("token", "secretkey");
+    authorization.database("mongodb");
+    authorization.database_connect("127.0.0.1", 27017, "database.collection");
+    authorization.database_scheme("token", "secretkey");
 }
 
 sub vcl_recv {
