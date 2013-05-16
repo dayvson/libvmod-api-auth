@@ -1,5 +1,5 @@
 #include <stdlib.h>
-#include "mongodb.h"
+#include "database_mongo.h"
 #include "mongo.h"
 
 enum status_types {
@@ -42,7 +42,7 @@ _connected ( database_t *database ) {
     return STATUS_FAIL;
 }
 
-const char * 
+static const char * 
 _credentials( database_t *database, const char* token ) 
 {
     bson query[1];

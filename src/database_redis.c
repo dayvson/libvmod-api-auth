@@ -42,7 +42,7 @@ _connected ( database_t *database ) {
     return STATUS_OK;
 }
 
-const char * 
+static const char * 
 _credentials( database_t *database, const char* token ) 
 {
     redis_t *redis_config = database_get_data ( database );
