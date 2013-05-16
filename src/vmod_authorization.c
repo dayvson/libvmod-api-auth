@@ -12,21 +12,11 @@
 #   undef assert
 #endif
 
-#define MONGO_HAVE_STDINT
-#include "mongo.h"
 #include "vrt.h"
 #include "bin/varnishd/cache.h"
 #include "vcc_if.h"
+#import "database.h"
 
-
-typedef struct mongoConfig {
-    char *host;
-    int port;
-    char *collection;
-    mongo conn[1];
-    char *private_key;
-    char *public_key;
-} config_t;
 
 typedef struct authHeader {
     char *scheme;
@@ -77,51 +67,6 @@ parse_header(const char* authorization_str){
     return _header;
 }
 
-static config_t *
-make_config(const char *host, int port, const char* collection)
-{
-    config_t *cfg;
-
-    /* XXX: Check if host and collection are NULL */
-    cfg = malloc(sizeof(config_t));
-
-    if(cfg == NULL){
-        return NULL;
-    }
-        
-    cfg->host = strdup(host);
-    cfg->port = port;
-    cfg->collection = collection;
-    mongo_client(cfg->conn, cfg->host, cfg->port);
-    return cfg;
-}
-
-static char * 
-get_user_by_token( config_t *cfg, const char* token ) {
-    bson query[1];
-    mongo_cursor cursor[1];
-
-    /* XXX: Check if token is NULL */
-
-    bson_init( query );
-    bson_append_string( query, cfg->public_key, token);
-    bson_finish( query );
-    mongo_cursor_init( cursor, cfg->conn, cfg->collection );
-    mongo_cursor_set_query( cursor, query );
-
-    /* XXX: Check if we have a find_one() in the mongo API to avoid the loop */
-    while( mongo_cursor_next( cursor ) == MONGO_OK ) {
-        bson_iterator iterator[1];
-        if ( bson_find( iterator, mongo_cursor_bson( cursor ), cfg->private_key )) {
-            /* XXX: Free query and cursor if you're leaving the scope here */
-            return bson_iterator_string( iterator );
-        }
-    }
-
-    bson_destroy( query );
-    mongo_cursor_destroy( cursor );
-    return NULL;
-}
 
 /*
  * Base64-encode, inspired heavily by gnulib/Simon Josefsson (as referenced in RFC4648)
@@ -296,41 +241,58 @@ init_base64_alphabet()
 int
 init_function(struct vmod_priv *priv, const struct VCL_conf *conf)
 {
-    if (priv->priv == NULL) {
-        priv->priv = make_config("127.0.0.1", 27017, "test.cherry");
-        priv->free = free;
-    }
     init_base64_alphabet();
 	return (0);
 }
 
 void 
-vmod_dbconnect(struct sess *sp, struct vmod_priv *priv, const char* host, int port, const char* collection){
-    config_t *old_cfg = priv->priv;
-
-    priv->priv = make_config(host, port, collection);
-    if(priv->priv && old_cfg) {
-        free(old_cfg->host);
-        free(old_cfg);
+vmod_database(struct sess *sp, 
+              struct vmod_priv *priv, 
+              const char* database_type)
+{
+    if (priv->priv != NULL) {
+        database_free (priv->priv);
     }
+    database_t *database = database_new(database_type);
+    priv->priv = database;
+}
+
+
+void 
+vmod_database_connect(struct sess *sp, 
+                      struct vmod_priv *priv, 
+                      const char* host, 
+                      int port, 
+                      const char* table)
+{
+    database_t *database;
+    if(priv->priv != NULL){
+        database = priv->priv;
+    }
+    database_set_host(database, host);
+    database_set_port(database, port);
+    database_set_table(database, table);
+    database_connect(database);
+    priv->priv = database;
 
 }
 
 void 
-vmod_dbscheme(struct sess *sp, struct vmod_priv *priv, const char* public_key, const char* private_key){
-    config_t *cfg = priv->priv;
-    if(cfg){
-        cfg->public_key = public_key;
-        cfg->private_key = private_key;
-        priv->priv = cfg;
+vmod_database_scheme(struct sess *sp, struct vmod_priv *priv, const char* public_key, const char* private_key){
+    database_t *database;
+    if(priv->priv != NULL){
+       database = priv->priv;
     }
+    database_set_private_key(database, private_key);
+    database_set_public_key(database, public_key);
+    priv->priv = database;
 }
 
 unsigned
 vmod_is_valid(struct sess *sp, struct vmod_priv *priv, const char *authorization_header, const char *url, const char *custom_header)
 {
-    config_t *cfg = priv->priv;
-    auth_header * _header;
+    database_t *database;
+    auth_header *_header;
     _header = parse_header(authorization_header);
     char *p;
     unsigned u, v;
@@ -345,9 +307,10 @@ vmod_is_valid(struct sess *sp, struct vmod_priv *priv, const char *authorization
         WS_Release(sp->wrk->ws, 0);
         return (NULL);
     }
+    database = priv->priv;
     /* Update work space with what we've used */
     WS_Release(sp->wrk->ws, v);
-    char * user_data = get_user_by_token( cfg, _header->token);
+    char * user_data = database_get_credentials(database, _header->token);
     char * sign_hmac = vmod_encode_hmac(sp, user_data, p);
     char * sign_b64  = vmod_encode_base64(sp, sign_hmac);
 
@@ -357,19 +320,3 @@ vmod_is_valid(struct sess *sp, struct vmod_priv *priv, const char *authorization
         return (0);
     }
 }
-
-#if 0
-unsigned
-vmod_set_backend(struct sess *sp,
-                 struct vmod_priv *priv,
-                 const char *kind)
-{
-  unsigned request_allocate, allocated;
-
-  if (priv->backend != NULL) {
-    backend_free (priv->backend);
-  }
-
-  /* do something cool here */
-}
-#endif
