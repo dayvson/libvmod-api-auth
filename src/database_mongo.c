@@ -18,7 +18,7 @@ _connect (database_t *database)
     int status;
     mongo_t *mongo_config = malloc( sizeof( mongo_t ) );
     /* TODO: Parse the uri (inside of kind) */
-    if(mongo_client ( mongo_config->conn, "127.0.0.1", 27017) == MONGO_OK ){
+    if(mongo_client ( mongo_config->conn, database_get_host ( database ), database_get_port ( database )) == MONGO_OK ){
         database_set_data ( database, mongo_config );
         return STATUS_OK;
     }
