@@ -1,6 +1,7 @@
 Module authorization
 Init init_function
-Function VOID dbconnect(PRIV_VCL, STRING, INT, STRING)
-Function VOID dbscheme(PRIV_VCL, STRING, STRING)
+Function VOID database(PRIV_VCL, STRING)
+Function VOID database_connect(PRIV_VCL, STRING, INT, STRING)
+Function VOID database_scheme(PRIV_VCL, STRING, STRING)
 Function BOOL is_valid(PRIV_VCL, STRING, STRING, STRING)
 
