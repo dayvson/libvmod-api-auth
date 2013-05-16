@@ -3,11 +3,17 @@ INCLUDES = -I$(VARNISHSRC)/include -I$(VARNISHSRC)
 vmoddir = $(VMODDIR)
 vmod_LTLIBRARIES = libvmod_authorization.la
 
-libvmod_authorization_la_LDFLAGS = -module -export-dynamic -avoid-version -shared -lmongoc -lmhash
+libvmod_authorization_la_LDFLAGS = -module -export-dynamic -avoid-version -shared -lmongoc -lmhash -lhiredis
 
 libvmod_authorization_la_SOURCES = \
 	vcc_if.c \
 	vcc_if.h \
+    database.h \
+    database.c \
+    database_mongo.h \
+    database_mongo.c \
+    database_redis.h \
+    database_redis.c \
 	vmod_authorization.c
 
 vcc_if.c vcc_if.h: $(VARNISHSRC)/lib/libvmod_std/vmod.py $(top_srcdir)/src/vmod_authorization.vcc
