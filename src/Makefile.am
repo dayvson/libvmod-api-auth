@@ -10,6 +10,8 @@ libvmod_authorization_la_SOURCES = \
 	vcc_if.h \
     database.h \
     database.c \
+    authorization_helpers.h \
+    authorization_helpers.c \
     database_mongo.h \
     database_mongo.c \
     database_redis.h \
