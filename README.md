@@ -13,7 +13,7 @@ import authorization;
 sub vcl_init {
   authorization.database("mongodb");
   authorization.database_connect("127.0.0.1", 27017, "test.cherry");
-  authorization.database_scheme("token", "secretkey");
+  authorization.database_scheme("token", "secretkey", "ratelimit");
 }
 
 sub vcl_recv {
@@ -47,7 +47,7 @@ sub vcl_recv {
   </tr>
   <tr>
     <td>database_scheme</td>
-    <td>STRING public_key, STRING private_key</td>
+    <td>STRING public_key, STRING private_key, STRING ratelimit_key</td>
     <td>VOID</td>
   </tr>
   <tr>
@@ -65,7 +65,7 @@ It is responsible to connect define which database VARNISH will use you can choo
 database(STRING database_name)
 
 #####Arguments:
-  database_name        -> Your database name (mongodb or redis)
+  database_name        -> A database name (mongodb or redis)
   
 
 ####database_connect
@@ -74,9 +74,9 @@ It is responsible to connect VARNISH to your Mongodb/Redis instance this functio
 database_connect(STRING host, INT port, STRING database.collection)
 
 #####Arguments:
-  host                -> Your mongodb host name
-  port                -> mongodb port
-  database.collection -> A string contain database name and collection
+  host                -> A mongodb/redis host name
+  port                -> A database port
+  database.collection -> A string contain database name and collection if it's mongo or database number if it's redis 
 
 #####Example:
 ```
@@ -93,6 +93,7 @@ database_scheme(STRING public_key, STRING private_key)
 #####Arguments:
   * public_key  -> A string property to access the public_key in your collection
   * private_key -> A string property to access the private_key in your collection
+  * rate_limit -> A string property to access the rate-limit in your collection
 
 #####Example:
 ```
