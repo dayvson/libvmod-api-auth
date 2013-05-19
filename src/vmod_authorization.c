@@ -1,3 +1,5 @@
+#include <stdlib.h>
+#include <stdio.h>
 #include "vrt.h"
 #include "bin/varnishd/cache.h"
 #include "vcc_if.h"
@@ -45,13 +47,14 @@ vmod_database_connect(struct sess *sp, struct vmod_priv *priv, const char *host,
 }
 
 void
-vmod_database_scheme(struct sess *sp, struct vmod_priv *priv, const char *public_key, const char *private_key)
+vmod_database_scheme(struct sess *sp, struct vmod_priv *priv, const char *public_key, const char *private_key, const char *ratelimit_key)
 {
     database_t *database;
     if (priv->priv != NULL)
         database = priv->priv;
     database_set_private_key(database, private_key);
     database_set_public_key(database, public_key);
+    database_set_ratelimit_key(database, ratelimit_key);
     priv->priv = database;
 }
 
@@ -78,10 +81,14 @@ vmod_is_valid(struct sess *sp, struct vmod_priv *priv, const char *authorization
     database = priv->priv;
     /* Update work space with what we've used */
     WS_Release(sp->wrk->ws, allocated);
-    char *user_data = database_get_credentials(database, _header->token);
-    if (user_data == NULL)
+    char *secretkey = database_get_credentials(database, _header->token);
+    if (secretkey == NULL)
         return 0;
-    char *sign_hmac = encode_hmac(sp, user_data, string_to_sign);
+    int isok = database_isratelimit_allowed(database, _header->token, secretkey);
+    LOG_ERR(sp, "######################### TOKEN %s ", _header->token);
+    LOG_ERR(sp, "######################### SECRETKEY %s ", secretkey);
+    LOG_ERR(sp, "######################### RATELIMIT %d ", isok);
+    char *sign_hmac = encode_hmac(sp, secretkey, string_to_sign);
     char *signed_b64  = encode_base64(sp, sign_hmac);
 
     if (VRT_strcmp(_header->signature, signed_b64) == 0)

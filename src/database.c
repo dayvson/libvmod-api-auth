@@ -10,6 +10,7 @@ struct database
     char *host;
     char *private_key;
     char *public_key;
+    char *ratelimit_key;
     char *table;
     void *data;
     database_callback_connect connect;
@@ -17,6 +18,7 @@ struct database
     database_callback_connected connected;
     database_callback_reconnect reconnect;
     database_callback_user_credentials credentials;
+    database_callback_ratelimit check_ratelimit;
 };
 
 database_t *
@@ -48,6 +50,12 @@ database_connect(database_t *database)
     return database->connect(database);
 }
 
+int
+database_isratelimit_allowed(database_t *database, const char *token, const char *secretkey)
+{
+    return database->check_ratelimit(database, token, secretkey);
+}
+
 const char *
 database_get_credentials(database_t *database, const char *token)
 {
@@ -58,6 +66,18 @@ const char *
 database_get_kind(database_t *database)
 {
     return (const char *) database->kind;
+}
+
+const char *
+database_get_ratelimit_key(database_t *database)
+{
+    return (const char *) database->ratelimit_key;
+}
+
+void
+database_set_ratelimit_key(database_t *database, const char *key)
+{
+    database->ratelimit_key = key;
 }
 
 void
@@ -139,6 +159,13 @@ database_get_table(database_t *database)
 }
 
 /* Interface setters */
+void
+database_callback_set_ratelimit(database_t *database, database_callback_ratelimit fn)
+{
+    database->check_ratelimit = fn;
+}
+
+
 void
 database_callback_set_user_credentials(database_t *database, database_callback_user_credentials fn)
 {
