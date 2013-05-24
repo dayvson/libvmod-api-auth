@@ -51,6 +51,12 @@ database_connect(database_t *database)
 }
 
 int
+database_disconnect(database_t *database)
+{
+    return database->disconnect(database);
+}
+
+int
 database_isratelimit_allowed(database_t *database, const char *token, const char *secretkey)
 {
     return database->check_ratelimit(database, token, secretkey);

@@ -41,7 +41,6 @@ vmod_database_connect(struct sess *sp, struct vmod_priv *priv, const char *host,
     database_set_host(database, host);
     database_set_port(database, port);
     database_set_table(database, table);
-    database_connect(database);
 
     priv->priv = database;
 }
@@ -79,9 +78,12 @@ vmod_is_valid(struct sess *sp, struct vmod_priv *priv, const char *authorization
     }
 
     database = priv->priv;
+    database_connect(database);
+
     /* Update work space with what we've used */
     WS_Release(sp->wrk->ws, allocated);
     char *secretkey = database_get_credentials(database, _header->token);
+
     if (secretkey == NULL)
         return 0;
     int isok = database_isratelimit_allowed(database, _header->token, secretkey);
@@ -90,7 +92,7 @@ vmod_is_valid(struct sess *sp, struct vmod_priv *priv, const char *authorization
     LOG_ERR(sp, "######################### RATELIMIT %d ", isok);
     char *sign_hmac = encode_hmac(sp, secretkey, string_to_sign);
     char *signed_b64  = encode_base64(sp, sign_hmac);
-
+    database_disconnect(database);
     if (VRT_strcmp(_header->signature, signed_b64) == 0)
         return 1;
     
