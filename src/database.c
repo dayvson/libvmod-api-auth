@@ -1,9 +1,13 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
+#include <stdarg.h>
+#include <stddef.h>
 #include "database.h"
 
 
-struct database
+
+struct database_config
 {
     int  port;
     char *kind;
@@ -12,7 +16,12 @@ struct database
     char *public_key;
     char *ratelimit_key;
     char *table;
+};
+
+struct database
+{
     void *data;
+    database_cfg_t *config;
     database_callback_connect connect;
     database_callback_disconnect disconnect;
     database_callback_connected connected;
@@ -21,27 +30,53 @@ struct database
     database_callback_ratelimit check_ratelimit;
 };
 
+
+static pthread_mutex_t auth_mtx = PTHREAD_MUTEX_INITIALIZER;
+static struct database_t **database_list;
+int database_list_sz;
+
+
 database_t *
-database_new(const char *database_kind)
+database_new(database_cfg_t *cfg)
 {
     database_t *database;
     database = malloc(sizeof(database_t));
-    database_set_kind(database, database_kind);
-    if (strcmp(database_kind, "mongodb") == 0)
+    database_set_config(database, cfg);
+    if (strcmp(databasecfg_get_kind(cfg), "mongodb") == 0)
     {
         database_init_mongo(database);
     }
-    else if (strcmp(database_kind, "redis") == 0)
+    else if (strcmp(databasecfg_get_kind(cfg), "redis") == 0)
     {
         database_init_redis(database);
     }
     return database;
 }
 
+database_cfg_t *
+databasecfg_new()
+{
+    database_cfg_t *cfg;
+    cfg = malloc(sizeof(database_cfg_t));
+    return cfg;
+}
+
 void
 database_free(database_t *database)
 {
     free(database);
+}
+
+void
+databasecfg_free(database_cfg_t *cfg)
+{
+    free(cfg);
+}
+
+int
+database_connected(database_t *database)
+{
+    return database->connected(database);
 }
 
 int
@@ -68,52 +103,64 @@ database_get_credentials(database_t *database, const char *token)
     return database->credentials(database, token);
 }
 
-const char *
-database_get_kind(database_t *database)
+void 
+database_set_config(database_t *database, database_cfg_t *cfg)
 {
-    return (const char *) database->kind;
+    database->config = cfg;
+}
+
+database_cfg_t * 
+database_get_config(database_t *database)
+{
+    return database->config;
 }
 
 const char *
-database_get_ratelimit_key(database_t *database)
+databasecfg_get_kind(database_cfg_t *cfg)
 {
-    return (const char *) database->ratelimit_key;
-}
-
-void
-database_set_ratelimit_key(database_t *database, const char *key)
-{
-    database->ratelimit_key = key;
-}
-
-void
-database_set_kind(database_t *database, const char *kind)
-{
-    database->kind = kind;
+    return (const char *) cfg->kind;
 }
 
 const char *
-database_get_host(database_t *database)
+databasecfg_get_ratelimit_key(database_cfg_t *cfg)
 {
-    return (const char *) database->host;
+    return (const char *) cfg->ratelimit_key;
 }
 
 void
-database_set_host(database_t *database, const char *host)
+databasecfg_set_ratelimit_key(database_cfg_t *cfg, const char *key)
 {
-    database->host = host;
+    cfg->ratelimit_key = key;
+}
+
+void
+databasecfg_set_kind(database_cfg_t *cfg, const char *kind)
+{
+    cfg->kind = kind;
+}
+
+const char *
+databasecfg_get_host(database_cfg_t *cfg)
+{
+    return (const char *) cfg->host;
+}
+
+void
+databasecfg_set_host(database_cfg_t *cfg, const char *host)
+{
+    cfg->host = host;
 }
 
 int
-database_get_port(database_t *database)
+databasecfg_get_port(database_cfg_t *cfg)
 {
-    return database->port;
+    return cfg->port;
 }
 
 void
-database_set_port(database_t *database, int port)
+databasecfg_set_port(database_cfg_t *cfg, int port)
 {
-    database->port = port;
+    cfg->port = port;
 }
 
 void
@@ -129,39 +176,73 @@ database_get_data(database_t *database)
 }
 
 void
-database_set_private_key(database_t *database, const char *key)
+databasecfg_set_private_key(database_cfg_t *cfg, const char *key)
 {
-    database->private_key = key;
+    cfg->private_key = key;
 }
 
 const char *
-database_get_private_key(database_t *database)
+databasecfg_get_private_key(database_cfg_t *cfg)
 {
-    return database->private_key;
+    return cfg->private_key;
 }
 
 void
-database_set_public_key(database_t *database, const char *key)
+databasecfg_set_public_key(database_cfg_t *cfg, const char *key)
 {
-    database->public_key = key;
+    cfg->public_key = key;
 }
 
 const char *
-database_get_public_key(database_t *database)
+databasecfg_get_public_key(database_cfg_t *cfg)
 {
-    return database->public_key;
+    return cfg->public_key;
 }
 
 void
-database_set_table(database_t *database, const char *table)
+databasecfg_set_table(database_cfg_t *cfg, const char *table)
 {
-    database->table = table;
+    cfg->table = table;
 }
 
 const char *
-database_get_table(database_t *database)
+databasecfg_get_table(database_cfg_t *cfg)
 {
-    return database->table;
+    return cfg->table;
+}
+
+
+void 
+create_database_pool(database_cfg_t *cfg)
+{
+    int i;
+    database_list = NULL;
+    database_list_sz = 50;
+    database_list = malloc(sizeof(database_t) * database_list_sz);
+    AZ(pthread_mutex_lock(&auth_mtx));
+    for (i = 0 ; i < database_list_sz; i++) {
+        database_t *database = database_new(cfg);
+        database_connect(database);
+        database_list[i] = database;
+    }
+    AZ(pthread_mutex_unlock(&auth_mtx));
+}
+
+
+#define _LOG_ERR(sess, ...)                                                     \
+    if ((sess) != NULL) {                                                       \
+        WSP((sess), SLT_VCL_error, __VA_ARGS__);                                \
+    } else {                                                                    \
+        fprintf(stderr, __VA_ARGS__);                                           \
+        fputs("\n", stderr);                                                    \
+    }
+
+database_t *
+get_database_instance(struct sess *sp)
+{
+    database_t *db;
+    db = database_list[sp->id % database_list_sz];
+    return db;
 }
 
 /* Interface setters */
@@ -170,7 +251,6 @@ database_callback_set_ratelimit(database_t *database, database_callback_ratelimi
 {
     database->check_ratelimit = fn;
 }
-
 
 void
 database_callback_set_user_credentials(database_t *database, database_callback_user_credentials fn)
