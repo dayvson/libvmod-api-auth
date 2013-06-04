@@ -12,8 +12,8 @@ _connect(database_t *database)
 {
     int status;
     mongo_t *mongo_config = malloc(sizeof(mongo_t));
-
-    if (mongo_client(mongo_config->conn, database_get_host(database), database_get_port(database)) == MONGO_OK)
+    database_cfg_t *config = database_get_config(database);
+    if (mongo_client(mongo_config->conn, databasecfg_get_host(config), databasecfg_get_port(config)) == MONGO_OK)
     {
         database_set_data(database, mongo_config);
         return STATUS_OK;
@@ -49,18 +49,18 @@ _credentials(database_t *database, const char *token)
         return NULL;
 
     mongo_t *mongo_config = (mongo_t *) database_get_data(database);
-
+    database_cfg_t *config = database_get_config(database);
     bson_init(query);
-    bson_append_string(query, database_get_public_key(database), token);
+    bson_append_string(query, databasecfg_get_public_key(config), token);
     bson_finish(query);
-    mongo_cursor_init(cursor, mongo_config->conn, database_get_table(database));
+    mongo_cursor_init(cursor, mongo_config->conn, databasecfg_get_table(config));
     mongo_cursor_set_query(cursor, query);
 
     /* XXX: Check if we have a find_one() in the mongo API to avoid the loop */
     while (mongo_cursor_next( cursor ) == MONGO_OK)
     {
         bson_iterator iterator[1];
-        if (bson_find(iterator, mongo_cursor_bson(cursor), database_get_private_key(database)))
+        if (bson_find(iterator, mongo_cursor_bson(cursor), databasecfg_get_private_key(config)))
         {
             private_key = bson_iterator_string(iterator);
             break;
