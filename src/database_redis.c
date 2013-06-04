@@ -15,13 +15,14 @@ static int
 _connect(database_t *database)
 {
     int status;
-    redis_t *redis_config = malloc(sizeof(redis_t));
-    redis_config->conn = redisConnect(database_get_host(database), database_get_port(database));
-    redis_config->reply = redisCommand(redis_config->conn, "SELECT %s", database_get_table(database));
-
-    if (redis_config->conn != NULL)
+    redis_t *client = malloc(sizeof(redis_t));
+    database_cfg_t *config = database_get_config(database);
+    client->conn = redisConnect(databasecfg_get_host(config), databasecfg_get_port(config));
+    client->reply = redisCommand(client->conn, "SELECT %s", databasecfg_get_table(config));
+    
+    if (client->conn != NULL)
     {
-        database_set_data(database, redis_config);
+        database_set_data(database, client);
         return STATUS_OK;
     }
     return STATUS_FAIL;
@@ -30,42 +31,47 @@ _connect(database_t *database)
 static int
 _disconnect(database_t *database)
 {
-    redis_t *redis_config = database_get_data(database);
-    redisFree(redis_config->conn);
+    redis_t *client = database_get_data(database);
+    redisFree(client->conn);
     return STATUS_OK;
 }
 
 static int
 _connected(database_t *database)
 {
-    /*XXX: I need to figure out a way to know if we still connected */
-    return STATUS_OK;
+    redis_t *client = database_get_data(database);
+    client->reply = redisCommand(client->conn, "PING");
+    if(client->reply != NULL && strcmp(client->reply->str, "PONG") == 0){
+        freeReplyObject(client->reply);
+        return STATUS_OK;
+    }
+    return STATUS_FAIL;
 }
 
 static const char *
 _credentials(database_t *database, const char *token)
 {
-    redis_t *redis_config = database_get_data(database);
-    redis_config->reply = redisCommand(redis_config->conn, "HGET %s %s", token, database_get_private_key(database));
-    if (redis_config->reply->len == 0)
-        return NULL;
-
-    const char *secretkey = strdup(redis_config->reply->str);
-    freeReplyObject(redis_config->reply);
-    return secretkey;
+    database_cfg_t *config = database_get_config(database);
+    redis_t *client = database_get_data(database);
+    redisReply *reply = redisCommand(client->conn, "HGET %s %s", token, databasecfg_get_private_key(config));
+    if (reply != NULL){
+        return strdup(reply->str);
+    }
+    return NULL;
 }
 
 static int
 _check_ratelimit(database_t *database, const char *token, const char *secretkey)
 {
-    redis_t *redis_config = database_get_data(database);
-    redis_config->reply = redisCommand(redis_config->conn, "HGET %s %s", token, database_get_ratelimit_key(database));
-    if (redis_config->reply->len == 0)
+    database_cfg_t *config = database_get_config(database);
+    redis_t *client = database_get_data(database);
+    client->reply = redisCommand(client->conn, "HGET %s %s", token, databasecfg_get_ratelimit_key(config));
+    if (client->reply->len == 0)
         return 0;
 
     char *sep = "/";
-    char *tmp_copy = strdup(redis_config->reply->str);
-    freeReplyObject(redis_config->reply);
+    char *tmp_copy = strdup(client->reply->str);
+    freeReplyObject(client->reply);
     int time_in_seconds = 10;
     int limit_value = atoi(strtok(tmp_copy, sep));
 
@@ -83,13 +89,13 @@ _check_ratelimit(database_t *database, const char *token, const char *secretkey)
         time_in_seconds = 3600;
     }
 
-    redis_config->reply = redisCommand(redis_config->conn, "INCR %s", secretkey);
-    int current_value = redis_config->reply->integer;
-    freeReplyObject(redis_config->reply);
+    client->reply = redisCommand(client->conn, "INCR %s", secretkey);
+    int current_value = client->reply->integer;
+    freeReplyObject(client->reply);
     if (current_value ==  1)
     {
-        redis_config->reply = redisCommand(redis_config->conn, "EXPIRE %s 10", secretkey);
-        freeReplyObject(redis_config->reply);
+        client->reply = redisCommand(client->conn, "EXPIRE %s %d", secretkey, time_in_seconds);
+        freeReplyObject(client->reply);
     }
     if (current_value > limit_value)
         return 0;
