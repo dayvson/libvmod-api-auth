@@ -1,7 +1,9 @@
 #Varnish Authorization Module
 -----------------------------
 ###Motivation
-Write me
+I start this module because I don't wanna write Authorization code on my applications anymore.
+I built that to me pretty flexible and reasuble with support to multiple databases like Redis, MongoDB.
+You will able to handle the security layer on your API without right a single line of code and still keeping your VCL easy and simple.
 
 
 ###Example (how to use):
