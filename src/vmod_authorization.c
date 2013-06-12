@@ -3,6 +3,9 @@
 #import "database.h"
 #import "authorization_helpers.h"
 
+/* STYLE:
+ *  -add type-casts for functions returning pointers, the first is done for you.
+ */
 
 static pthread_mutex_t auth_mtx = PTHREAD_MUTEX_INITIALIZER;
 
@@ -26,7 +29,8 @@ vmod_database(struct sess *sp, struct vmod_priv *priv, const char *database_type
 {
     if (priv->priv != NULL)
         databasecfg_free (priv->priv);
-    database_cfg_t *db_cfg = databasecfg_new();
+    /* STYLE: type-cast: */
+    database_cfg_t *db_cfg = (database_cfg_t*)databasecfg_new();
     databasecfg_set_kind(db_cfg, database_type);
     priv->priv = db_cfg;
 }
@@ -35,26 +39,39 @@ void
 vmod_database_connect(struct sess *sp, struct vmod_priv *priv, const char *host, int port, const char *table)
 {
     database_cfg_t *db_cfg;
-    if (priv->priv != NULL)
+    if (priv->priv != NULL) {
         db_cfg = priv->priv;
+    }
+    else {
+        /* FIXME: check for NULL or the following will segfault. */
+    }
 
     databasecfg_set_host(db_cfg, host);
     databasecfg_set_port(db_cfg, port);
     databasecfg_set_table(db_cfg, table);
     create_database_pool(db_cfg);
-    priv->priv = db_cfg;
+
+    /* FIXME: Not necessary, they're already equal: */
+    /* priv->priv = db_cfg; */
 }
 
 void
 vmod_database_scheme(struct sess *sp, struct vmod_priv *priv, const char *public_key, const char *private_key, const char *ratelimit_key)
 {
     database_cfg_t *db_cfg;
-    if (priv->priv != NULL)
+    if (priv->priv != NULL) {
         db_cfg = priv->priv;
+    }
+    else {
+        /* FIXME: check for NULL or the following will segfault. */
+    };
+
     databasecfg_set_private_key(db_cfg, private_key);
     databasecfg_set_public_key(db_cfg, public_key);
     databasecfg_set_ratelimit_key(db_cfg, ratelimit_key);
-    priv->priv = db_cfg;
+
+    /* FIXME: Not necessary, they're already equal: */
+    /* priv->priv = db_cfg; */
 }
 
 unsigned

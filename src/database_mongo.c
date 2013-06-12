@@ -2,6 +2,10 @@
 #include "database_mongo.h"
 #include "mongo.h"
 
+/* STYLE:
+ *  -add type-casts for functions returning pointers, the first is done for you.
+ */
+
 typedef struct mongoConfig
 {
     mongo conn[1];
@@ -11,8 +15,9 @@ static int
 _connect(database_t *database)
 {
     int status;
-    mongo_t *mongo_config = malloc(sizeof(mongo_t));
-    database_cfg_t *config = database_get_config(database);
+    /* FIXME: idiomatic C would have this type-cast as: */
+    mongo_t *mongo_config = (mongo_t*)malloc(sizeof(mongo_t));
+    database_cfg_t *config = (database_cfg_t*)database_get_config(database);
     if (mongo_client(mongo_config->conn, databasecfg_get_host(config), databasecfg_get_port(config)) == MONGO_OK)
     {
         database_set_data(database, mongo_config);
@@ -45,6 +50,7 @@ _credentials(database_t *database, const char *token)
     bson query[1];
     mongo_cursor cursor[1];
     const char *private_key;
+    const char *search_key;
     if (token == NULL)
         return NULL;
 
@@ -56,11 +62,14 @@ _credentials(database_t *database, const char *token)
     mongo_cursor_init(cursor, mongo_config->conn, databasecfg_get_table(config));
     mongo_cursor_set_query(cursor, query);
 
+    /* OPTIMIZE: pull the value once and avoiding repeat function calls: */
+    search_key = (const char*)databasecfg_get_private_key(config);
+
     /* XXX: Check if we have a find_one() in the mongo API to avoid the loop */
     while (mongo_cursor_next( cursor ) == MONGO_OK)
     {
         bson_iterator iterator[1];
-        if (bson_find(iterator, mongo_cursor_bson(cursor), databasecfg_get_private_key(config)))
+        if (bson_find(iterator, mongo_cursor_bson(cursor), search_key))
         {
             private_key = bson_iterator_string(iterator);
             break;

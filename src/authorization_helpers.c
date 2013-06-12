@@ -16,6 +16,10 @@
 #include "vcc_if.h"
 #import "authorization_helpers.h"
 
+/* STYLE:
+ *  -add type-casts for functions returning pointers, the first is done for you.
+ */
+
 enum alphabets
 {
     BASE64 = 0,
@@ -179,10 +183,15 @@ parse_header(const char *authorization_str)
     auth_header *_header;
 
     /* XXX: Protect the malloc call with the varnish locking system */
-    _header = malloc(sizeof(auth_header));
+    /* STYLE: type-cast: */
+    _header = (auth_header*)malloc(sizeof(auth_header));
     tmp_copy = strdup(authorization_str);
+    if (_header == NULL || tmp_copy == NULL) {
+        /* FIXME: Check for malloc fail. */
+    };
 
     /* XXX: strtok() is not reentrant :( */
+    /* FIXME: use strtok_r */
     _header->scheme = strtok(tmp_copy, delimiters);
     if (VRT_strcmp(_header->scheme, default_scheme) != 0)
         return NULL;
@@ -226,6 +235,7 @@ encode_hmac(struct sess *sp, const char *key, const char *msg)
     hexptr = hexenc;
     for (j = 0; j < blocksize; j++)
     {
+        /* FIXME: use snprintf to avoid segfaults (paranoia):*/
         sprintf(hexptr, "%.2x", mac[j]);
         hexptr += 2;
         assert((hexptr - hexenc) < (2 * blocksize + 3));

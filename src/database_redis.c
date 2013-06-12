@@ -15,7 +15,12 @@ static int
 _connect(database_t *database)
 {
     int status;
-    redis_t *client = malloc(sizeof(redis_t));
+    /* FIXME: add type-casts */
+    redis_t *client = (redis_t*)malloc(sizeof(redis_t));
+    if (client == NULL) {
+        /* FIXME: handle malloc fail. */
+    };
+
     database_cfg_t *config = database_get_config(database);
     client->conn = redisConnect(databasecfg_get_host(config), databasecfg_get_port(config));
     client->reply = redisCommand(client->conn, "SELECT %s", databasecfg_get_table(config));
@@ -71,8 +76,25 @@ _check_ratelimit(database_t *database, const char *token, const char *secretkey)
 
     char *sep = "/";
     char *tmp_copy = strdup(client->reply->str);
+    
+    if (tmp_copy == NULL) {
+        /* FIXME: check for strdup failure.*/
+    };
+
     freeReplyObject(client->reply);
     int time_in_seconds = 10;
+
+    /* FIXME:
+     * If tmp_copy is guaranteed to always contain a properly formatted decimal
+     * value, this is fine. If there is a chance the limit value string could
+     * come back malformed, you should use strtol instead.
+     */
+
+    /* FIXME:
+     * If this function is potentially called by multiple threads, you MUST:
+     * - use strtol instead of atoi
+     * - use strtok_r instead of strtok
+     */
     int limit_value = atoi(strtok(tmp_copy, sep));
 
     char *timef = strtok(NULL, sep);

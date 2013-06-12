@@ -4,6 +4,11 @@
 #include "bin/varnishd/cache.h"
 #include "vcc_if.h"
 
+/* FIXME:
+ * const correctness: functions which take whaever* and don't modify
+ * the underlying fields should take const whatever*
+ */
+
 enum status_types{
     STATUS_NOMEM = -1,
     STATUS_OK = 0,

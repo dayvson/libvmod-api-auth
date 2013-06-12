@@ -5,11 +5,14 @@
 #include <stddef.h>
 #include "database.h"
 
-
+/* STYLE:
+ *  -add type-casts for functions returning pointers, the first is done for you.
+ */
 
 struct database_config
 {
     int  port;
+    /* FIXME: these should all be const char*: */
     char *kind;
     char *host;
     char *private_key;
@@ -33,15 +36,35 @@ struct database
 
 static pthread_mutex_t auth_mtx = PTHREAD_MUTEX_INITIALIZER;
 static struct database_t **database_list;
-int database_list_sz;
+
+/* FIXME: Use a define here, so there are no magic numbers:
+ * int database_list_sz;
+ */
+#define DATABASE_POOL_SIZE 50
 
 
 database_t *
 database_new(database_cfg_t *cfg)
 {
     database_t *database;
-    database = malloc(sizeof(database_t));
+    /* STYLE: type-cast: */
+    database = (database_t*)malloc(sizeof(database_t));
+
+    if (database == NULL ) {
+        /* FIXME: check for malloc NULL. */
+    }
+
     database_set_config(database, cfg);
+
+    /* CLEANUP:
+     * instead of having the database_init_XXX functions
+     * get invoked directly here, requiring them to appear
+     * in two headers, you could have a generic "initializer"
+     * registry, which the other translation units insert themselves
+     * into.
+     *
+     * This, however, is not *wrong*.
+     */
     if (strcmp(databasecfg_get_kind(cfg), "mongodb") == 0)
     {
         database_init_mongo(database);
@@ -58,6 +81,9 @@ databasecfg_new()
 {
     database_cfg_t *cfg;
     cfg = malloc(sizeof(database_cfg_t));
+    if (cfg == NULL ) {
+        /* FIXME: check for NULL on malloc */
+    };
     return cfg;
 }
 
@@ -217,12 +243,27 @@ create_database_pool(database_cfg_t *cfg)
 {
     int i;
     database_list = NULL;
-    database_list_sz = 50;
-    database_list = malloc(sizeof(database_t) * database_list_sz);
+
+    /* FIXME: no magic numbers.
+     * #define DB_POOL_SIZE 50
+     * so we know what it is:
+     * database_list_sz = 50;
+     */
+    database_list = (database_t**)malloc(sizeof(database_t) * DATABASE_POOL_SIZE);
+    if (database_list == NULL ) {
+        /* FIXME: check for NULL */
+    };
+
     AZ(pthread_mutex_lock(&auth_mtx));
-    for (i = 0 ; i < database_list_sz; i++) {
+    for (i = 0 ; i < DATABASE_POOL_SIZE; i++) {
+        int result;
         database_t *database = database_new(cfg);
-        database_connect(database);
+        result = database_connect(database);
+
+        if (result != STATUS_OK) {
+            /* FIXME: Check for connection errors. */
+        };
+
         database_list[i] = database;
     }
     AZ(pthread_mutex_unlock(&auth_mtx));
@@ -241,7 +282,7 @@ database_t *
 get_database_instance(struct sess *sp)
 {
     database_t *db;
-    db = database_list[sp->id % database_list_sz];
+    db = database_list[sp->id % DATABASE_POOL_SIZE];
     return db;
 }
 
