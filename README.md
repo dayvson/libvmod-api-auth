@@ -189,6 +189,10 @@ curl -H "Authorization: NYTV 9c421d03fe8562827bcf573310051844a65da0fc:ZjQyNTRkZT
     <td>LIBMONGO</td>
     <td>1.6.2</td>
   </tr>
+  <tr>
+    <td>HIREDIS</td>
+    <td>0.11</td>
+  </tr>
 </table>
 
 
