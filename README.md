@@ -1,7 +1,7 @@
 # Varnish Authorization Module
 
 ## Motivation
-The Varnish Authorization Module was created to eliminate the need for writing authorization code within applications. This module offers flexibility and reusability, supporting multiple databases like Redis and MongoDB. With this module, you can easily manage the security layer of your API without writing extensive code, while maintaining a straightforward and simple VCL configuration.
+The Varnish Authorization Module was created to eliminate the need for writing authorization code within applications. This module offers flexibility and reusability, supporting multiple databases extensibility (Redis and MongoDB are available as part of the module). With this module, you can easily manage the security layer of your API without writing extensive code, while maintaining a straightforward and simple VCL configuration.
 
 ## Example (How to Use)
 Below is a VCL example demonstrating how to use the authorization module:
